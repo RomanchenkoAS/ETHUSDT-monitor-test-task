@@ -95,7 +95,7 @@ async def update_database(symbol, end_timestamp):
 
         except StopIteration:
             await client.close_connection()
-            print("[INFO] Loop is over")
+            # print("[INFO] Loop is over")
             print("[INFO] Executed queries: ", queries_num)
             break
 
@@ -122,8 +122,8 @@ async def main():
             """)
     # print(last_hour)
     
-    runtime = time.time()
-    print(runtime)
+    runtime = datetime.now().timestamp()
+    # print(runtime)
     # Start monitoring
 
     # Initialize binance client
@@ -133,13 +133,18 @@ async def main():
     print("\n[INFO] Start monitoring")
     try:
         while True:
-            t0 = time.time()
+            t0 = datetime.now().timestamp()
             tickers = await asyncio.gather(*[get_ticker(client, symbol) for symbol in symbols])
             print(f"ETHUDST = {tickers[0]['price']} | BTCUSD = {tickers[1]['price']} | runtime = {round(time.time() - t0, 2)}s")
             
-            if runtime - time.time() > 5:
-                print('5 sec passed')
-                runtime = time.time()
+            if datetime.now().timestamp() - runtime > 60:
+                # print('5 sec passed')
+                runtime = datetime.now().timestamp()
+                print('[INFO] 60 sec passed, writing a new kline to the DB')
+                current_time = datetime.now()
+                for symbol in symbols:
+                    await update_database(symbol, current_time)
+                print('[INFO] Databases are up to date')
             
             # NOTE: API is limited up to 1200 request per minute hence the delay
             await asyncio.sleep(1)
