@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt # For visualisation
 from db_config import execute
 
 # Get historical data by joining two tables 
+# CAST clause is used to round up timestamps and avoid discrepancy of less then 1s
 query = """SELECT e.opentime, e.closetime, e.open, e.close, b.open, b.close 
             FROM ethusdt e 
             FULL OUTER JOIN btcusdt b 
