@@ -93,6 +93,20 @@ def update_database(symbol, end_timestamp):
             klines = client.futures_klines(
                 symbol=symbol, interval=Client.KLINE_INTERVAL_1MINUTE, startTime=timestamp_msec, limit=1000)
 
+            # Check if the last kline is already closed
+            now_msec = int(datetime.now().timestamp() * 1000)
+            # last_closed_kline_start_time_msec = current_time_msec - (Client.KLINE_INTERVAL_1MINUTE * 60 * 1000)
+            # print("1 min interval: ", Client.KLINE_INTERVAL_1MINUTE)
+            # Get the open time of the last kline
+            last_kline_open_time_msec = klines[-1][0]
+            
+            if last_kline_open_time_msec > (now_msec - 60000):
+                print('last kline open: ', datetime.utcfromtimestamp(last_kline_open_time_msec / 1000).strftime('%Y-%m-%d %H:%M:%S'))
+                print('now: ', datetime.utcfromtimestamp((now_msec)/1000).strftime('%Y-%m-%d %H:%M:%S'))
+                print('substracted: ', datetime.utcfromtimestamp((now_msec - 60000)/1000).strftime('%Y-%m-%d %H:%M:%S'))
+            
+            # print(last_kline_open_time_msec)
+
             query_list = generate_queries(klines, symbol)
 
             execute(query_list)
