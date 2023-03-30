@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
-from binance.client import Client
+from binance.client import Client # This is for initial updating the database on launch 
+from binance import AsyncClient # This is for real-time monitoring
+import time
 
 from db_config import execute
 
@@ -60,6 +62,7 @@ def update_database(symbol, end_timestamp):
     last_row = execute(
         f"SELECT * FROM {symbol.lower()} ORDER BY opentime DESC LIMIT 1;")
     if last_row:
+        # If a database exists, starting time would be when the last kline closed
         starting_timestamp = last_row[0][6]
     else:
         # Starting time year, month, day (+hour, minute, etc)
@@ -117,6 +120,30 @@ def main():
         # Strip the last klines from db since they are not closed yet
         execute(
             f'DELETE FROM {symbol.lower()} WHERE opentime IN (SELECT opentime FROM {symbol.lower()} ORDER BY opentime DESC LIMIT 1);')
+
+    # Start monitor
+
+    # Initialize binance client
+    api_key, api_secret = get_keys()
+    client = Client(api_key, api_secret)
+
+    print("\n[INFO] Start monitoring")
+    while True:
+        t0 = time.time()
+        # print(t0)
+        symbol = 'ETHUSDT' 
+        ticker_e = client.futures_symbol_ticker(symbol=symbol)
+        t1 = time.time()
+        # print(ticker, ': ', round(t1 - t0,2))
+        
+        symbol = 'BTCUSDT'
+        ticker_b = client.futures_symbol_ticker(symbol=symbol)
+        t2 = time.time()
+        # print(ticker, ': ', round(t2 - t1,2))
+        
+        print(f"ETHUDST = {ticker_e['price']} | BTCUSD = {ticker_b['price']} | runtime = {round(time.time() - t0,2)}")
+        
+        time.sleep(3)
 
 
 if __name__ == '__main__':

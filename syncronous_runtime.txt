@@ -1,0 +1,28 @@
+[INFO] Updating data for ETHUSDT
+[DB INFO] PostgreSQL connection is open ----> closed
+[INFO] request start
+[DB INFO] PostgreSQL connection is open ----> closed
+[INFO] request over
+
+[INFO] Loop is over
+[INFO] Executed queries:  2
+[INFO] Updating data for BTCUSDT
+[DB INFO] PostgreSQL connection is open ----> closed
+[INFO] request start
+[DB INFO] PostgreSQL connection is open ----> closed
+[INFO] request over
+
+[INFO] Loop is over
+[INFO] Executed queries:  2
+[INFO] Databases are up to date
+[DB INFO] PostgreSQL connection is open ----> closed
+[DB INFO] PostgreSQL connection is open ----> closed
+
+[INFO] Start monitoring
+ETHUDST = 1799.98 | BTCUSD = 28558.20 | runtime = 0.88
+ETHUDST = 1799.99 | BTCUSD = 28558.20 | runtime = 0.62
+ETHUDST = 1800.00 | BTCUSD = 28558.20 | runtime = 0.62
+ETHUDST = 1799.99 | BTCUSD = 28561.60 | runtime = 0.62
+ETHUDST = 1800.22 | BTCUSD = 28562.30 | runtime = 0.62
+ETHUDST = 1800.24 | BTCUSD = 28565.90 | runtime = 0.71
+ETHUDST = 1800.43 | BTCUSD = 28566.60 | runtime = 0.62
