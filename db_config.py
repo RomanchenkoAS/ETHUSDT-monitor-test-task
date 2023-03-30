@@ -9,6 +9,20 @@ DB_NAME = "crypto"
 
 # Manipulate manually with: $ psql -h 127.0.0.1 -U postgres crypto
 
+# Create table queries
+
+# CREATE TABLE IF NOT EXISTS public.template
+# (
+#     opentime timestamp without time zone NOT NULL,
+#     open double precision,
+#     high double precision,
+#     low double precision,
+#     close double precision,
+#     volume double precision,
+#     closetime timestamp without time zone,
+#     CONSTRAINT template_pkey PRIMARY KEY (opentime)
+# )
+
 async def execute(query_list):
     """ This function takes a query list or a single query and executes them in SQL 
         If the query is SELECT there will be a return list 
@@ -22,6 +36,7 @@ async def execute(query_list):
     
     try:
         # Connect to the existing db
+        # NOTE: possible optimisation - create a connection pool for whole program once and get connections from there 
         connection = await asyncpg.connect(
             host=HOST,
             user=USER,

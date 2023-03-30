@@ -40,7 +40,7 @@ def generate_queries(klines, symbol):
     return query_list
 
 
-async def update_database(symbol, end_timestamp):
+async def update_database(symbol, end_timestamp, output_queue=None):
 
     print(f'[INFO] Updating data for {symbol}')
 
@@ -83,7 +83,12 @@ async def update_database(symbol, end_timestamp):
             
             if last_kline_open_time_msec > (now_msec - 60000):
                 klines.pop()
-
+            
+            # While function updates db in realtime we need to yield new klines for data analysis 
+            # yield klines[-1]
+            if output_queue:
+                await output_queue.put(klines[-1])
+            
             query_list = generate_queries(klines, symbol)
 
             await execute(query_list)
@@ -98,7 +103,6 @@ async def update_database(symbol, end_timestamp):
             # print("[INFO] Loop is over")
             print("[INFO] Executed queries: ", queries_num)
             break
-
 
 async def get_ticker(client, symbol):
     ticker = await client.futures_symbol_ticker(symbol=symbol)
@@ -120,7 +124,7 @@ async def main():
             ON CAST(e.opentime AS TIMESTAMP(0)) = CAST(b.opentime AS TIMESTAMP(0))
             ORDER BY e.opentime DESC LIMIT 60;
             """)
-    # print(last_hour)
+    # print(len(last_hour))
     
     runtime = datetime.now().timestamp()
     # print(runtime)
@@ -138,13 +142,27 @@ async def main():
             print(f"ETHUDST = {tickers[0]['price']} | BTCUSD = {tickers[1]['price']} | runtime = {round(time.time() - t0, 2)}s")
             
             if datetime.now().timestamp() - runtime > 60:
-                # print('5 sec passed')
+                # Reset the timer
                 runtime = datetime.now().timestamp()
                 print('[INFO] 60 sec passed, writing a new kline to the DB')
+                
                 current_time = datetime.now()
+                
+                result = []
+                # To return 
                 for symbol in symbols:
-                    await update_database(symbol, current_time)
+                    output = asyncio.Queue()
+                    await update_database(symbol, current_time, output_queue=output)
+                    result.append(await output.get())
+                    
+                    
                 print('[INFO] Databases are up to date')
+                print(result)
+                
+                last_hour.append(*result)
+                print("[DEBUG] Last hour klines: ", last_hour)
+                
+                
             
             # NOTE: API is limited up to 1200 request per minute hence the delay
             await asyncio.sleep(1)
