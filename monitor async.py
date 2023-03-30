@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from binance.client import Client # This is for initial updating the database on launch 
+from binance import AsyncClient, BinanceSocketManager # This is for real-time monitoring
+import asyncio
 import time
 
 from db_config import execute
@@ -106,7 +108,12 @@ def update_database(symbol, end_timestamp):
             break
 
 
-def main():
+async def get_ticker(client, symbol):
+    ticker = await client.futures_symbol_ticker(symbol=symbol)
+    return ticker
+
+
+async def main():
 
     symbols = ['ETHUSDT', 'BTCUSDT']
     current_time = datetime.now()
@@ -123,27 +130,21 @@ def main():
     # Start monitor
 
     # Initialize binance client
-    api_key, api_secret = get_keys()
-    client = Client(api_key, api_secret)
-
+    client = await AsyncClient.create()
+    symbols = ['ETHUSDT', 'BTCUSDT']
+    
     print("\n[INFO] Start monitoring")
-    while True:
-        t0 = time.time()
-        # print(t0)
-        symbol = 'ETHUSDT' 
-        ticker_e = client.futures_symbol_ticker(symbol=symbol)
-        t1 = time.time()
-        # print(ticker, ': ', round(t1 - t0,2))
-        
-        symbol = 'BTCUSDT'
-        ticker_b = client.futures_symbol_ticker(symbol=symbol)
-        t2 = time.time()
-        # print(ticker, ': ', round(t2 - t1,2))
-        
-        print(f"ETHUDST = {ticker_e['price']} | BTCUSD = {ticker_b['price']} | runtime = {round(time.time() - t0,2)}")
-        
-        time.sleep(3)
-
+    try:
+        while True:
+            t0 = time.time()
+            tickers = await asyncio.gather(*[get_ticker(client, symbol) for symbol in symbols])
+            print(f"ETHUDST = {tickers[0]['price']} | BTCUSD = {tickers[1]['price']} | runtime = {round(time.time() - t0, 2)}")
+            # API is limited up to 1200 request per minute
+            await asyncio.sleep(1)
+    except Exception as _ex:
+        await client.close_connection()
+        print('[INFO] Script exited: ', _ex)
 
 if __name__ == '__main__':
-    main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
