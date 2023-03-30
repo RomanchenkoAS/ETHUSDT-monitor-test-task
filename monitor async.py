@@ -1,29 +1,13 @@
 from datetime import datetime, timedelta
-from binance.client import Client # This is for initial updating the database on launch 
-from binance import AsyncClient, BinanceSocketManager # This is for real-time monitoring
+from binance import AsyncClient # Client for real-time monitoring
 import asyncio
 import time
 
 from db_config import execute
 
 
-def get_keys():
-    """ Fetch binance API-keys from api_key.txt in current folder 
-        NOTE: Api-key file is ignored by source control """
-
-    try:
-        with open('api_key.txt', 'r') as key:
-            api_key = key.readline().strip()
-            api_secret = key.readline().strip()
-    except FileNotFoundError as _ex:
-        print("[ERR] Error occured while opening the file containing keys: ", _ex)
-        print("[ERR] API key file is not present in source control it should be delivered in order to run")
-
-    return api_key, api_secret
-
-
 def timestamp_generator(start, end, interval):
-    """ Generates timestamps from start till now with given interval """
+    """ Generates timestamps from start point till end (e.g. now) with given interval """
     
     current = start
 
@@ -56,7 +40,7 @@ def generate_queries(klines, symbol):
     return query_list
 
 
-def update_database(symbol, end_timestamp):
+async def update_database(symbol, end_timestamp):
 
     print(f'[INFO] Updating data for {symbol}')
 
@@ -75,8 +59,7 @@ def update_database(symbol, end_timestamp):
         starting_timestamp, end_timestamp, delta_minutes)
 
     # Initialize binance client
-    api_key, api_secret = get_keys()
-    client = Client(api_key, api_secret)
+    client = await AsyncClient.create()
 
     # Counter for queries
     queries_num = 0
@@ -90,23 +73,16 @@ def update_database(symbol, end_timestamp):
 
             print('[INFO] request start')
 
-            klines = client.futures_klines(
-                symbol=symbol, interval=Client.KLINE_INTERVAL_1MINUTE, startTime=timestamp_msec, limit=1000)
+            klines = await client.futures_klines(
+                symbol=symbol, interval=client.KLINE_INTERVAL_1MINUTE, startTime=timestamp_msec, limit=1000)
 
-            # Check if the last kline is already closed
+            # Check if the last kline is already closed, if not - remove it from the list
             now_msec = int(datetime.now().timestamp() * 1000)
-            # last_closed_kline_start_time_msec = current_time_msec - (Client.KLINE_INTERVAL_1MINUTE * 60 * 1000)
-            # print("1 min interval: ", Client.KLINE_INTERVAL_1MINUTE)
             # Get the open time of the last kline
             last_kline_open_time_msec = klines[-1][0]
             
             if last_kline_open_time_msec > (now_msec - 60000):
-                # print('last kline open: ', datetime.utcfromtimestamp(last_kline_open_time_msec / 1000).strftime('%Y-%m-%d %H:%M:%S'))
-                # print('now: ', datetime.utcfromtimestamp((now_msec)/1000).strftime('%Y-%m-%d %H:%M:%S'))
-                # print('substracted: ', datetime.utcfromtimestamp((now_msec - 60000)/1000).strftime('%Y-%m-%d %H:%M:%S'))
                 klines.pop()
-            
-            # print(last_kline_open_time_msec)
 
             query_list = generate_queries(klines, symbol)
 
@@ -118,6 +94,7 @@ def update_database(symbol, end_timestamp):
             print('[INFO] request over\n')
 
         except StopIteration:
+            await client.close_connection()
             print("[INFO] Loop is over")
             print("[INFO] Executed queries: ", queries_num)
             break
@@ -133,11 +110,11 @@ async def main():
     symbols = ['ETHUSDT', 'BTCUSDT']
     current_time = datetime.now()
     for symbol in symbols:
-        update_database(symbol, current_time)
+        await update_database(symbol, current_time)
 
     print('[INFO] Databases are up to date')
 
-    # Start monitor
+    # Start monitoring
 
     # Initialize binance client
     client = await AsyncClient.create()
@@ -148,13 +125,17 @@ async def main():
         while True:
             t0 = time.time()
             tickers = await asyncio.gather(*[get_ticker(client, symbol) for symbol in symbols])
-            print(f"ETHUDST = {tickers[0]['price']} | BTCUSD = {tickers[1]['price']} | runtime = {round(time.time() - t0, 2)}")
-            # API is limited up to 1200 request per minute
+            print(f"ETHUDST = {tickers[0]['price']} | BTCUSD = {tickers[1]['price']} | runtime = {round(time.time() - t0, 2)}s")
+            # NOTE: API is limited up to 1200 request per minute
             await asyncio.sleep(1)
     except Exception as _ex:
         await client.close_connection()
         print('[INFO] Script exited: ', _ex)
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    
+    # loop = asyncio.get_event_loop()
     loop.run_until_complete(main())

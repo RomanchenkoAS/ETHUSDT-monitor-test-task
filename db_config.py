@@ -45,6 +45,7 @@ def execute(query_list):
         
     except Exception as _ex:
         print("\n[DB ERR] Error while working with database: ", _ex)
+        print("[DB INFO] Connection is ----> ", end="")
     finally:
         if connection:
             connection.close()
