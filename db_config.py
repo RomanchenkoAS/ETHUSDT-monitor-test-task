@@ -1,4 +1,5 @@
-import psycopg2
+import asyncpg
+import asyncio
 
 # Local database requisites
 HOST = "127.0.0.1"
@@ -8,7 +9,7 @@ DB_NAME = "crypto"
 
 # Manipulate manually with: $ psql -h 127.0.0.1 -U postgres crypto
 
-def execute(query_list):
+async def execute(query_list):
     """ This function takes a query list or a single query and executes them in SQL 
         If the query is SELECT there will be a return list 
         Launch this source code to execute query from terminal by hand """
@@ -21,7 +22,7 @@ def execute(query_list):
     
     try:
         # Connect to the existing db
-        connection = psycopg2.connect(
+        connection = await asyncpg.connect(
             host=HOST,
             user=USER,
             password=PASSWORD,
@@ -29,38 +30,39 @@ def execute(query_list):
         )
         print("[DB INFO] PostgreSQL connection is open ----> ", end="")
         
-        connection.autocommit = True
-        
         results = []
         
-        with connection.cursor() as cursor:
+        async with connection.transaction():
             for query in query_list:
-                cursor.execute(query)
+                await connection.execute(query)
                 # print(f"[DB INFO] Execution of query {query}")
-            
+
             # Get results if a query is SELECT
             if query_list[0].startswith("SELECT"):
-                results.extend(cursor.fetchall())
-                    
+                for query in query_list:
+                    rows = await connection.fetch(query)
+                    results.extend(rows)
         
     except Exception as _ex:
         print("\n[DB ERR] Error while working with database: ", _ex)
         print("[DB INFO] Connection is ----> ", end="")
     finally:
         if connection:
-            connection.close()
+            await connection.close()
             print("closed")
             
     return results
             
 
-def main():
+async def main():
     # In case you would want to execute queries from terminal 
     query = input("[INPUT] Write a db query: ")
-    rows = execute(query)
+    rows = await execute(query)
     
     for row in rows:
         print(row)
     
 if __name__ == "__main__":
-    main()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)   
+    loop.run_until_complete(main())

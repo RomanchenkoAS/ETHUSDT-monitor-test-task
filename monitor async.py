@@ -44,7 +44,7 @@ async def update_database(symbol, end_timestamp):
 
     print(f'[INFO] Updating data for {symbol}')
 
-    last_row = execute(
+    last_row = await execute(
         f"SELECT * FROM {symbol.lower()} ORDER BY opentime DESC LIMIT 1;")
     if last_row:
         # If a database exists, starting time would be when the last kline closed
@@ -86,7 +86,7 @@ async def update_database(symbol, end_timestamp):
 
             query_list = generate_queries(klines, symbol)
 
-            execute(query_list)
+            await execute(query_list)
 
             # Query count
             queries_num += len(query_list)
@@ -114,6 +114,16 @@ async def main():
 
     print('[INFO] Databases are up to date')
 
+    last_hour = await execute("""SELECT e.opentime, e.closetime, e.open, e.close, b.open, b.close 
+            FROM ethusdt e 
+            FULL OUTER JOIN btcusdt b 
+            ON CAST(e.opentime AS TIMESTAMP(0)) = CAST(b.opentime AS TIMESTAMP(0))
+            ORDER BY e.opentime DESC LIMIT 60;
+            """)
+    # print(last_hour)
+    
+    runtime = time.time()
+    print(runtime)
     # Start monitoring
 
     # Initialize binance client
@@ -126,8 +136,14 @@ async def main():
             t0 = time.time()
             tickers = await asyncio.gather(*[get_ticker(client, symbol) for symbol in symbols])
             print(f"ETHUDST = {tickers[0]['price']} | BTCUSD = {tickers[1]['price']} | runtime = {round(time.time() - t0, 2)}s")
-            # NOTE: API is limited up to 1200 request per minute
+            
+            if runtime - time.time() > 5:
+                print('5 sec passed')
+                runtime = time.time()
+            
+            # NOTE: API is limited up to 1200 request per minute hence the delay
             await asyncio.sleep(1)
+            
     except Exception as _ex:
         await client.close_connection()
         print('[INFO] Script exited: ', _ex)
