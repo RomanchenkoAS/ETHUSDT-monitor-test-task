@@ -101,9 +101,10 @@ def update_database(symbol, end_timestamp):
             last_kline_open_time_msec = klines[-1][0]
             
             if last_kline_open_time_msec > (now_msec - 60000):
-                print('last kline open: ', datetime.utcfromtimestamp(last_kline_open_time_msec / 1000).strftime('%Y-%m-%d %H:%M:%S'))
-                print('now: ', datetime.utcfromtimestamp((now_msec)/1000).strftime('%Y-%m-%d %H:%M:%S'))
-                print('substracted: ', datetime.utcfromtimestamp((now_msec - 60000)/1000).strftime('%Y-%m-%d %H:%M:%S'))
+                # print('last kline open: ', datetime.utcfromtimestamp(last_kline_open_time_msec / 1000).strftime('%Y-%m-%d %H:%M:%S'))
+                # print('now: ', datetime.utcfromtimestamp((now_msec)/1000).strftime('%Y-%m-%d %H:%M:%S'))
+                # print('substracted: ', datetime.utcfromtimestamp((now_msec - 60000)/1000).strftime('%Y-%m-%d %H:%M:%S'))
+                klines.pop()
             
             # print(last_kline_open_time_msec)
 
@@ -135,11 +136,6 @@ async def main():
         update_database(symbol, current_time)
 
     print('[INFO] Databases are up to date')
-
-    for symbol in symbols:
-        # Strip the last klines from db since they are not closed yet
-        execute(
-            f'DELETE FROM {symbol.lower()} WHERE opentime IN (SELECT opentime FROM {symbol.lower()} ORDER BY opentime DESC LIMIT 1);')
 
     # Start monitor
 
