@@ -3,7 +3,6 @@ from binance import AsyncClient
 import asyncio
 import time
 import asyncpg
-import asyncio
 import sys
 
 import traceback
@@ -13,7 +12,6 @@ HOST = "127.0.0.1"
 USER = "postgres"
 PASSWORD = "171997"
 DB_NAME = "crypto"
-
 
 async def execute(query_list):
     """ This function takes a query list or a single query and executes them in SQL 
@@ -36,11 +34,11 @@ async def execute(query_list):
             database=DB_NAME
         )
         print("[DB INFO] PostgreSQL connection is open ----> ", end="")
-        # await asyncio.sleep(5) # simulation of a prolonged db connection
         results = []
 
         async with connection.transaction():
             for query in query_list:
+                # NOTE: possible optimisation - refactor queries to be list of tuples and run executemany
                 await connection.execute(query)
                 # print(f"[DB INFO] Execution of query {query}")
 
@@ -123,7 +121,7 @@ async def update_database(symbol, end_timestamp, output_queue=None):
         # If a database is not empty, starting time would be when the last kline closed
         starting_timestamp = last_row[0][6]
     else:
-        # Starting time 01-02-2023
+        # Else, starting time is 01-02-2023 00:00
         starting_timestamp = datetime(2023, 2, 1)
 
     # to specify time delta in minutes * number of klines in response
