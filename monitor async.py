@@ -1,13 +1,9 @@
 from datetime import datetime, timedelta
-from binance import AsyncClient  # Client for real-time monitoring
+from binance import AsyncClient
 import asyncio
 import time
 
-import traceback
-
-
 import pandas as pd
-# import matplotlib.pyplot as plt
 
 from db_config import execute_async
 
@@ -90,8 +86,7 @@ async def update_database(symbol, end_timestamp, output_queue=None):
             if last_kline_open_time_msec > (now_msec - 60000):
                 klines.pop()
 
-            # While function updates db in realtime we need to yield new klines for data analysis
-            # yield klines[-1]
+            # While function updates db in realtime we need to return new klines for data analysis
             if output_queue:
                 await output_queue.put(klines[-1])
 
@@ -141,13 +136,11 @@ async def main():
     # This kline is used to calculate returns of ETHUSDT & BTCUSDT
     hour_ago_kline = df.iloc[60]
 
-    # Start monitoring
-
     # Initialize binance client
     client = await AsyncClient.create()
     symbols = ['ETHUSDT', 'BTCUSDT']
 
-    print("\n[INFO] Start monitoring")
+    print("\n[INFO] Start monitoring futures ETHUSDT")
     try:
         while True:
 
@@ -165,7 +158,7 @@ async def main():
             b_return = 100 * (btcusdt - hour_ago_kline['b_close']) / btcusdt
             residual = e_return - b_return
 
-            print(f"""ETHUDST = {ethusdt:.2f} ({e_return:.2f}%) Own change (1H) = {residual:.2f}% | BTCUSD = {btcusdt:.2f} ({b_return:.2f}%)| Request runtime = {(time.time() - t0):.2f}s""")
+            print(f"""ETHUDST = {ethusdt:.2f} ({e_return:.2f}%) own change (1H) = {residual:.2f}% | BTCUSD = {btcusdt:.2f} ({b_return:.2f}%)| Request runtime = {(time.time() - t0):.2f}s""")
 
             # Notification whenever own movement exceeds 1%
             if residual > 1:
