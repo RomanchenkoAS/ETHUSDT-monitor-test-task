@@ -71,7 +71,7 @@ async def update_database(symbol, end_timestamp, output_queue=None):
             # This is the timestamp value in YYYY-MM-DD HH-MM-SS
             timestamp = next(generator)
             # This is the value to make request - value in milliseconds (Unix timestamp)
-            timestamp_msec = int(timestamp.timestamp())*1000
+            timestamp_msec = int(timestamp.timestamp()) * 1000
 
             print('[INFO] request start')
 
@@ -120,11 +120,12 @@ async def main():
 
     print('[INFO] Databases are up to date')
 
+    # Get klines for the last hour from the database
     last_hour = await execute_async("""SELECT e.opentime, e.close, b.close 
             FROM ethusdt e 
             FULL OUTER JOIN btcusdt b 
             ON CAST(e.opentime AS TIMESTAMP(0)) = CAST(b.opentime AS TIMESTAMP(0))
-            ORDER BY e.opentime DESC LIMIT 61;
+            ORDER BY e.opentime DESC LIMIT 60;
             """)
 
     timer = datetime.now().timestamp()
@@ -134,7 +135,7 @@ async def main():
     df.set_index('opentime', inplace=True)
 
     # This kline is used to calculate returns of ETHUSDT & BTCUSDT
-    hour_ago_kline = df.iloc[60]
+    hour_ago_kline = df.iloc[59]
 
     # Initialize binance client
     client = await AsyncClient.create()
@@ -200,7 +201,7 @@ async def main():
                 df = pd.concat([new_row, df]).reset_index(drop=True)
 
                 # Update kline to which data is compared
-                hour_ago_kline = df.iloc[60]
+                hour_ago_kline = df.iloc[59]
 
                 print('[INFO] Databases are up to date')
 
