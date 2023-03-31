@@ -1,10 +1,10 @@
 """ This is a synchronous script for ETHUSDT own movement visualisation """
 
-import pandas as pd # For data analysis
-import matplotlib.pyplot as plt # For visualisation
+import pandas as pd  # For data analysis
+import matplotlib.pyplot as plt  # For visualisation
 from db_config import execute
 
-# Get historical data by joining two tables 
+# Get historical data by joining two tables
 # CAST clause is used to round up timestamps and avoid discrepancy of less then 1s
 query = """SELECT e.opentime, e.closetime, e.open, e.close, b.open, b.close 
             FROM ethusdt e 
@@ -22,8 +22,8 @@ df.set_index('opentime', inplace=True)
 df['eth_returns'] = (df['e_open'] - df['e_close']) / df['e_open']
 df['btc_returns'] = (df['b_open'] - df['b_close']) / df['b_open']
 
-# Residuals (ETHUSDT own movements) would be the difference between ETHUSDT & BTCUSDT returns for given interval 
-df['residuals'] = df['eth_returns'] - df['btc_returns'] 
+# Residuals (ETHUSDT own movements) would be the difference between ETHUSDT & BTCUSDT returns for given interval
+df['residuals'] = df['eth_returns'] - df['btc_returns']
 
 # Calculate change for last hour
 df['eth_own_change'] = df['residuals'].rolling(window=60).sum()
@@ -35,7 +35,8 @@ markers = df[df['eth_own_change'].abs() > 0.01]
 plt.plot(df.index, df['eth_returns'], color='blue', label='ETH Returns')
 plt.plot(df.index, df['btc_returns'], color='red', label='BTC Returns')
 plt.plot(df.index, df['residuals'], color='green', label='ETH own movements')
-plt.plot(df.index, df['eth_own_change'], color='pink', label='sum of ETH own change for last hour')
+plt.plot(df.index, df['eth_own_change'], color='pink',
+         label='sum of ETH own change for last hour')
 
 # Axes
 plt.axhline(y=0, color='black', linestyle='--')
@@ -43,7 +44,8 @@ plt.axhline(y=0.01, color='black', linestyle='--')
 plt.axhline(y=-0.01, color='black', linestyle='--')
 
 # Add markers
-plt.scatter(markers.index, markers['residuals'], color='purple', marker='*', label='>1% change for last hour')
+plt.scatter(markers.index, markers['residuals'], color='purple',
+            marker='*', label='>1% change for last hour')
 
 # Legend
 plt.title('Currency movements over time')

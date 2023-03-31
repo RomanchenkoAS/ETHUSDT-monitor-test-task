@@ -4,7 +4,9 @@ import asyncio
 import time
 import asyncpg
 import asyncio
+import sys
 
+import traceback
 import pandas as pd
 
 HOST = "127.0.0.1"
@@ -12,34 +14,21 @@ USER = "postgres"
 PASSWORD = "171997"
 DB_NAME = "crypto"
 
-# Create table queries
-
-# CREATE TABLE IF NOT EXISTS <ethusdt | btcusdt>
-# (
-#     opentime timestamp without time zone NOT NULL,
-#     open double precision,
-#     high double precision,
-#     low double precision,
-#     close double precision,
-#     volume double precision,
-#     closetime timestamp without time zone,
-#     CONSTRAINT template_pkey PRIMARY KEY (opentime)
-# )
 
 async def execute(query_list):
     """ This function takes a query list or a single query and executes them in SQL 
         If the query is SELECT there will be a return list 
         Launch this source code to execute query from terminal by hand """
-    
+
     if type(query_list) == str:
         # Transform a single query to a list with length 1 for unification
         _temp = query_list
         query_list = []
         query_list.append(_temp)
-    
+
     try:
         # Connect to the existing db
-        # NOTE: possible optimisation - create a connection pool for whole program once and get connections from there 
+        # NOTE: possible optimisation - create a connection pool for whole program once and get connections from there
         connection = await asyncpg.connect(
             host=HOST,
             user=USER,
@@ -49,7 +38,7 @@ async def execute(query_list):
         print("[DB INFO] PostgreSQL connection is open ----> ", end="")
         # await asyncio.sleep(5) # simulation of a prolonged db connection
         results = []
-        
+
         async with connection.transaction():
             for query in query_list:
                 await connection.execute(query)
@@ -60,17 +49,33 @@ async def execute(query_list):
                 for query in query_list:
                     rows = await connection.fetch(query)
                     results.extend(rows)
-        
+
+    except asyncpg.exceptions.UndefinedTableError:
+        print("""\n[DB ERR] PostgreSQL relation (table) does not exist. Create relation with following query: 
+              
+                    CREATE TABLE IF NOT EXISTS <ethusdt | btcusdt> (
+                        opentime timestamp without time zone NOT NULL,
+                        open double precision,
+                        high double precision,
+                        low double precision,
+                        close double precision,
+                        volume double precision,
+                        closetime timestamp without time zone,
+                        CONSTRAINT template_pkey PRIMARY KEY (opentime) ); """)
+        sys.exit(1)
+
     except Exception as _ex:
+        traceback.print_exc()
         print("\n[DB ERR] Error while working with database: ", _ex)
         print("[DB INFO] Connection is ----> ", end="")
+
     finally:
         if connection:
             await connection.close()
             print("closed")
-            
+
     return results
-            
+
 
 def timestamp_generator(start, end, interval):
     """ Generates timestamps from start point till end (e.g. now) with given interval """
@@ -107,6 +112,8 @@ def generate_queries(klines, symbol):
 
 
 async def update_database(symbol, end_timestamp, output_queue=None):
+    """ This function fills the database table for current symbol 
+    with klines beginning from the last saved kline in the table and until now """
 
     print(f'[INFO] Updating data for {symbol}')
 
@@ -165,12 +172,12 @@ async def update_database(symbol, end_timestamp, output_queue=None):
 
         except StopIteration:
             await client.close_connection()
-            # print("[INFO] Loop is over")
             print("[INFO] Executed queries: ", queries_num)
             break
 
 
 async def get_ticker(client, symbol):
+    """ Request current data for symbol from binance """
     ticker = await client.futures_symbol_ticker(symbol=symbol)
     return ticker
 
@@ -178,16 +185,19 @@ async def get_ticker(client, symbol):
 async def main():
 
     symbols = ['ETHUSDT', 'BTCUSDT']
+
     current_time = datetime.now()
+
+    # In case last kline in ETHUSDT doesnt correspond to last kline in BTCUSDT table, we must update both tables separately
     for symbol in symbols:
         await update_database(symbol, current_time)
 
     print('[INFO] Databases are up to date')
 
     # Get klines for the last hour from the database
-    last_hour = await execute("""SELECT e.opentime, e.close, b.close 
-            FROM ethusdt1 e 
-            FULL OUTER JOIN btcusdt1 b 
+    last_hour = await execute(f"""SELECT e.opentime, e.close, b.close 
+            FROM ethusdt e 
+            FULL OUTER JOIN btcusdt b 
             ON CAST(e.opentime AS TIMESTAMP(0)) = CAST(b.opentime AS TIMESTAMP(0))
             ORDER BY e.opentime DESC LIMIT 60;
             """)
@@ -225,7 +235,7 @@ async def main():
 
             print(f"""ETHUDST = {ethusdt:.2f} ({e_return:.2f}%) own change (1H) = {residual:.2f}% | BTCUSD = {btcusdt:.2f} ({b_return:.2f}%)| Request runtime = {(time.time() - t0):.2f}s""")
 
-            # Notification whenever own movement exceeds 1%
+            # Notification shown whenever ETHUSDT own movement exceeds 1%
             if residual > 1:
                 print("[INFO] ETHUSDT own movement is over 1% for last hour ")
 
