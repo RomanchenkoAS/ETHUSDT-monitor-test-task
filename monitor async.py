@@ -2,11 +2,75 @@ from datetime import datetime, timedelta
 from binance import AsyncClient
 import asyncio
 import time
+import asyncpg
+import asyncio
 
 import pandas as pd
 
-from db_config import execute_async
+HOST = "127.0.0.1"
+USER = "postgres"
+PASSWORD = "171997"
+DB_NAME = "crypto"
 
+# Create table queries
+
+# CREATE TABLE IF NOT EXISTS <ethusdt | btcusdt>
+# (
+#     opentime timestamp without time zone NOT NULL,
+#     open double precision,
+#     high double precision,
+#     low double precision,
+#     close double precision,
+#     volume double precision,
+#     closetime timestamp without time zone,
+#     CONSTRAINT template_pkey PRIMARY KEY (opentime)
+# )
+
+async def execute(query_list):
+    """ This function takes a query list or a single query and executes them in SQL 
+        If the query is SELECT there will be a return list 
+        Launch this source code to execute query from terminal by hand """
+    
+    if type(query_list) == str:
+        # Transform a single query to a list with length 1 for unification
+        _temp = query_list
+        query_list = []
+        query_list.append(_temp)
+    
+    try:
+        # Connect to the existing db
+        # NOTE: possible optimisation - create a connection pool for whole program once and get connections from there 
+        connection = await asyncpg.connect(
+            host=HOST,
+            user=USER,
+            password=PASSWORD,
+            database=DB_NAME
+        )
+        print("[DB INFO] PostgreSQL connection is open ----> ", end="")
+        # await asyncio.sleep(5) # simulation of a prolonged db connection
+        results = []
+        
+        async with connection.transaction():
+            for query in query_list:
+                await connection.execute(query)
+                # print(f"[DB INFO] Execution of query {query}")
+
+            # Get results if the query is SELECT
+            if query_list[0].startswith("SELECT"):
+                for query in query_list:
+                    rows = await connection.fetch(query)
+                    results.extend(rows)
+        
+    except Exception as _ex:
+        print("\n[DB ERR] Error while working with database: ", _ex)
+        print("[DB INFO] Connection is ----> ", end="")
+    finally:
+        if connection:
+            await connection.close()
+            print("closed")
+            
+    return results
+            
 
 def timestamp_generator(start, end, interval):
     """ Generates timestamps from start point till end (e.g. now) with given interval """
@@ -46,13 +110,13 @@ async def update_database(symbol, end_timestamp, output_queue=None):
 
     print(f'[INFO] Updating data for {symbol}')
 
-    last_row = await execute_async(
+    last_row = await execute(
         f"SELECT * FROM {symbol.lower()} ORDER BY opentime DESC LIMIT 1;")
     if last_row:
-        # If a database exists, starting time would be when the last kline closed
+        # If a database is not empty, starting time would be when the last kline closed
         starting_timestamp = last_row[0][6]
     else:
-        # Starting time year, month, day (+hour, minute, etc)
+        # Starting time 01-02-2023
         starting_timestamp = datetime(2023, 2, 1)
 
     # to specify time delta in minutes * number of klines in response
@@ -92,7 +156,7 @@ async def update_database(symbol, end_timestamp, output_queue=None):
 
             query_list = generate_queries(klines, symbol)
 
-            await execute_async(query_list)
+            await execute(query_list)
 
             # Query count
             queries_num += len(query_list)
@@ -121,9 +185,9 @@ async def main():
     print('[INFO] Databases are up to date')
 
     # Get klines for the last hour from the database
-    last_hour = await execute_async("""SELECT e.opentime, e.close, b.close 
-            FROM ethusdt e 
-            FULL OUTER JOIN btcusdt b 
+    last_hour = await execute("""SELECT e.opentime, e.close, b.close 
+            FROM ethusdt1 e 
+            FULL OUTER JOIN btcusdt1 b 
             ON CAST(e.opentime AS TIMESTAMP(0)) = CAST(b.opentime AS TIMESTAMP(0))
             ORDER BY e.opentime DESC LIMIT 60;
             """)

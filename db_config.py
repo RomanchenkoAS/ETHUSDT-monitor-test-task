@@ -8,7 +8,7 @@ USER = "postgres"
 PASSWORD = "171997"
 DB_NAME = "crypto"
 
-# Manipulate manually with: $ psql -h 127.0.0.1 -U postgres crypto
+# Manipulate DB manually with: $ psql -h 127.0.0.1 -U postgres crypto
 
 # Create table queries
 
