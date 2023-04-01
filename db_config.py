@@ -117,7 +117,7 @@ def execute(query_list):
 async def main():
     # In case you would want to execute queries from terminal 
     query = input("[INPUT] Write a db query: ")
-    rows = await execute(query)
+    rows = execute(query)
     
     for row in rows:
         print(row)

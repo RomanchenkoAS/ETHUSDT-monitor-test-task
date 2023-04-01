@@ -10,7 +10,7 @@ import pandas as pd
 
 HOST = "127.0.0.1"
 USER = "postgres"
-PASSWORD = "171997"
+PASSWORD = "******"
 DB_NAME = "crypto"
 
 async def execute(query_list):
