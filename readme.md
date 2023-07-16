@@ -1,55 +1,51 @@
-#### Задача
+# Task
+1. Determine the intrinsic movements of the ETHUSDT futures, excluding movements caused by the influence of the BTCUSDT price.
 
-1. Определить собственные движения фьючерса ETHUSDT, исключив из них движения вызванные влиянием цены BTCUSDT.
+2. Write a real-time Python program with minimal delay that monitors the price of the ETHUSDT futures and, using the selected methodology, determines the intrinsic price movements of ETH. When the price changes by 1% in the last 60 minutes, the program outputs a message to the console. The program should continue running, continuously fetching the current price.
 
-2. Написать программу на Python, которая в реальном времени (с минимальной задержкой) следит за ценой фьючерса ETHUSDT и используя выбранную методику, определяет собственные движение цены ETH. При изменении цены на 1% за последние 60 минут, программа выводит сообщение в консоль. При этом программа должна продолжает работать дальше, считаывая актуальную цену.
+# Dependencies
+- asyncpg: asynchronous PostgreSQL management
+- binance: Binance API
+- pandas: data analysis and management
 
-#### Зависимости
+# Files
+- monitor_async.py: main source code of the project, allowing monitoring of the intrinsic price movements of ETHUSDT futures with minimal delay.
+- analysis.py: visual representation of the intrinsic movements of ETHUSDT futures on a graph to demonstrate the calculation methodology.
+- db_config.py: code for configuring the database connection and executing SQL queries.
 
-- asyncpg: асинхронное управление PostgreSQL
-- binance: API Binance 
-- pandas: анализ и управление данными
+  #### Structure of monitor_async.py
+- execute(query_list): This function takes a list of SQL queries and executes them in the pre-configured database. For SELECT queries, the query result is returned.
+- timestamp_generator(start, end, interval): This function generates a queue of timestamps between the specified "start" and "end" with a defined interval. For example, from 00:00 until the current moment, with a one-minute interval.
+- generate_queries(klines, symbol): This function generates INSERT SQL queries from the candlestick data obtained from the Binance API.
+- update_database(symbol, end_timestamp, output_queue=None): This function updates the database to the current moment and is executed before the main program loop.
 
-#### Файлы
+# Configuration
+Before executing the code, you need to configure the PostgreSQL database.
+```
+HOST = "127.0.0.1"
+USER = "postgres"
+PASSWORD = "******"
+DB_NAME = "crypto"
+```
 
-- monitor_async.py - основной исходный код проекта, позволяющий мониторить собственные движения цены фьючерса ETHUSDT с минимальной задержкой.
-- analysis.py - визуальное отображение собственного движения фьючерса ETHUSDT на графике для демонстрации методики расчета.
-- db_config.py - код для конфигурации соединения с базой данных и выполнения SQL запросов 
+In addition, you need to create the following PostgreSQL relations with the following query:
 
-#### Конфигурация
+```CREATE TABLE IF NOT EXISTS <ethusdt | btcusdt> (
+opentime timestamp without time zone NOT NULL,
+open double precision,
+high double precision,
+low double precision, 
+close double precision, 
+volume double precision, 
+closetime timestamp without time zone,
+CONSTRAINT template_pkey PRIMARY KEY (opentime) );
+```
 
-Прежде чем исполнять код, необходимо настроить базу данных psql.
-
-HOST = "127.0.0.1" <br>
-USER = "postgres" <br>
-PASSWORD = "******" <br>
-DB_NAME = "crypto" <br>
-
-Кроме того, требуется создать реляции PostgreSQL следующим запросом:
-
-CREATE TABLE IF NOT EXISTS <ethusdt | btcusdt> ( <br>
-opentime timestamp without time zone NOT NULL, <br>
-open double precision, <br>
-high double precision, <br>
-low double precision, <br>
-close double precision, <br>
-volume double precision, <br>
-closetime timestamp without time zone, <br>
-CONSTRAINT template_pkey PRIMARY KEY (opentime) ); <br>
-
-#### Структура monitor_async.py
-
-- execute(query_list): Функция принимает список SQL запросов и выполняет их в ранее сконфигурированной базе данных. При запросе SELECT возваращется результат запроса. 
-- timestamp_generator(start, end, interval): Функция генерирует очередь временных меток между заданным "стартом" и "финишем" с определенным интервалом. Например, с 00:00 до данного момента, с интервалом в одну минуту.
-- generate_queries(klines, symbol): Функция формирует SQL запросы INSERT из свечей, полученных из API Binancе.
-- update_database(symbol, end_timestamp, output_queue=None): Эта функция обновляет базу данных до текущего момента, выполняется перед основным циклом работы программы.
-
-#### Работа кода
-
-Результат работы кода monitor_async.py выглядит следующим образом:
+# Code Execution
+The result of executing the code monitor_async.py looks as follows:
 
 ![image](https://user-images.githubusercontent.com/119735427/229299323-25887da0-755e-43c7-b762-2cc09e87eab4.png)
 
-Анализ движений фьючерса при помощи analysis.py:
+Analysis of the futures movements using analysis.py:
 
 ![image](https://user-images.githubusercontent.com/119735427/230715346-80898d11-2880-448a-a7b6-a1b9f8b59e1a.png)
